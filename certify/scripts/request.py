@@ -1,0 +1,28 @@
+"""
+Application to request a cert from a certmaster.
+Takes no arguments, uses /etc/certmaster/minion.conf
+
+Copyright 2008, Red Hat, Inc
+Michael DeHaan <mdehaan@redhat.com>
+
+This software may be freely redistributed under the terms of the GNU
+general public license.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+"""
+import optparse
+
+from certify import requester
+
+if __name__ == "__main__":
+    parser = optparse.OptionParser()
+
+    parser.add_option('--hostname', action="store", dest="hostname",
+        metavar="NAME", 
+        help='hostname to use as the CN for the certificate')
+    
+    (opts, args) = parser.parse_args()
+
+    requester.request_cert(hostname=opts.hostname)
