@@ -49,14 +49,25 @@ def make_csr(pkey, CN, C=None, ST=None, L=None, O=None, OU=None, emailAddress=No
     """
     req = crypto.X509Req()
     req.get_subject()
+
+    # Set subject name properties iff the passed argument is set
+    # x509Name only accepts Unicode attributes here: setting to 'None' throws an exception
     subj  = req.get_subject()
-    subj.C = C
-    subj.ST = ST
-    subj.L = L
-    subj.O = O
-    subj.OU = OU
-    subj.CN = CN
-    subj.emailAddress = emailAddress
+    if C:
+        subj.C = C
+    if ST:
+        subj.ST = ST
+    if L:
+        subj.L = L
+    if O:
+        subj.O = O
+    if OU:
+        subj.OU = OU
+    if CN:
+        subj.CN = CN
+    if emailAddress:
+        subj.emailAddress = emailAddress
+
     req.set_pubkey(pkey)
     req.sign(pkey, hashalgorithm)
     return req
@@ -71,28 +82,33 @@ def create_ca(CN, C=None, ST=None, L=None, O=None, OU=None, emailAddress=None, h
     :param OU: organizationalUnitName
     :param emailAddress: The email address for the certifificate. 
     :return: The :class:`OpenSSL.crypto.X509Req` instance.
-    """
-    # TODO: Refactor, refactor.
-    cakey = make_keypair()
-    careq = make_csr(cakey, cn=CN)
+    """ 
+    # TODO: Make numbits and expiration time configurable
+    cakey = make_keypair(numbits=2048)
+    careq = make_csr(cakey, CN, C, ST, L, O, OU, emailAddress, hashalgorithm)
     cacert = crypto.X509()
     cacert.set_serial_number(0)
     cacert.gmtime_adj_notBefore(0)
     cacert.gmtime_adj_notAfter(60*60*24*365*10) # 10 yrs - hard to beat this kind of cert!
-    cacert.set_issuer(careq.get_subject())
+       
     cacert.set_subject(careq.get_subject())
     cacert.set_pubkey(careq.get_pubkey())
     cacert.set_version(2)
     
-    extensions = []
-    # In case, you're wondering, param 2 is "critical?"
-    extensions.append(crypto.X509Extension('basicConstraints', True,'CA:TRUE'))
-    extensions.append(crypto.X509Extension('subjectKeyIdentifier' , True , 'hash'))
-    extensions.append(crypto.X509Extension('authorityKeyIdentifier' , False, 'keyid:always,issuer:always'))
-    
-    cacert.add_extensions(extensions)
+    # Set the extensions in two passes
+    cacert.add_extensions([
+        crypto.X509Extension('basicConstraints', True,'CA:TRUE'),
+        crypto.X509Extension('subjectKeyIdentifier' , True , 'hash', subject=cacert)
+    ])
+
+    # ... now we can set the authority key since it depends on the subject key
+    cacert.add_extensions([
+        crypto.X509Extension('authorityKeyIdentifier' , False, 'issuer:always, keyid:always', issuer=cacert, subject=cacert)
+    ])
+
+    # sign and return the cert with the key
     cacert.sign(cakey, 'sha1')
-    return cacert
+    return (cacert, cakey)
 
 def _get_serial_number(cadir):
     serial = '%s/serial.txt' % cadir

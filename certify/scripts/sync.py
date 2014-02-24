@@ -1,9 +1,9 @@
 #!/usr/bin/python -tt
 
-# Syncs the valid CA-signed certificates from certmaster to all known
+# Syncs the valid CA-signed certificates from certify to all known
 # hosts via func.  To be called during the post-sign hook to copy new
 # certificates and from the post-clean hook in order to purge stale
-# certificates.  Requires 'sync_certs' to be set in certmaster.conf.
+# certificates.  Requires 'sync_certs' to be set in certify.conf.
 
 import os
 import sys
@@ -23,7 +23,7 @@ except ImportError:
 import xmlrpclib
 from glob import glob
 from time import sleep
-from certmaster import certmaster as certmaster
+from certify import certify as certify
 from func.overlord.client import Client
 from func.CommonErrors import Func_Client_Exception
 import func.jobthing as jobthing
@@ -50,7 +50,7 @@ def syncable(cert_list):
     ticks = 0
     return_code = jobthing.JOB_ID_RUNNING
     results = None
-    job_id = fc.certmastermod.peering_enabled()
+    job_id = fc.certifymod.peering_enabled()
     while return_code != jobthing.JOB_ID_FINISHED and ticks < 3:
         sleep(1)
         (return_code, results) = fc.job_status(job_id)
@@ -67,7 +67,7 @@ def remote_peers(hosts):
     Calls out to hosts to collect peer information
     """
     fc = Client(';'.join(hosts))
-    return fc.certmastermod.known_peers()
+    return fc.certifymod.known_peers()
 
 def local_certs():
     """
@@ -107,7 +107,7 @@ def remove_stale_certs(local, remote):
             if peer[0] not in local:
                 die.append(peer[0])
         if die != []:
-            fc.certmastermod.remove_peer_certs(die)
+            fc.certifymod.remove_peer_certs(die)
 
 def copy_updated_certs(local, remote):
     """
@@ -123,9 +123,10 @@ def copy_updated_certs(local, remote):
                 fd = open(full_path)
                 certblob = fd.read()
                 fd.close()
-                fc.certmastermod.copy_peer_cert(cert[0], xmlrpclib.Binary(certblob))
+                fc.certifymod.copy_peer_cert(cert[0], xmlrpclib.Binary(certblob))
 
 def main():
+    cm = certify.CertMaster()
     forced = False
     try:
         if sys.argv[1] in ['-f', '--force']:
@@ -145,7 +146,3 @@ def main():
     local = local_certs()
     remove_stale_certs(local, remote)
     copy_updated_certs(local, remote)
-
-if __name__ == "__main__":
-    cm = certmaster.CertMaster()
-    main()

@@ -1,4 +1,8 @@
-__authors__ = ['"Seth Vidal" <skvidal@fedoraproject.org>', '"Hans Lellelid" <hans@xmpl.org>']
+__authors__ = [
+    '"Seth Vidal" <skvidal@fedoraproject.org>', 
+    '"Hans Lellelid" <hans@xmpl.org>',
+    '"Eric Anderton" <eric.t.anderton@gmail.com>'
+]
 __copyright__ = "Copyright (c) 2007 Red Hat, inc"
 __license__ = """This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

@@ -2,7 +2,11 @@
 Module contains support methods for requesting certificates.
 """
 
-__authors__ = ['"Seth Vidal" <skvidal@fedoraproject.org>', '"Hans Lellelid" <hans@xmpl.org>']
+__authors__ = [
+    '"Seth Vidal" <skvidal@fedoraproject.org>',
+    '"Hans Lellelid" <hans@xmpl.org>',
+    '"Eric Anderton" <eric.t.anderton@gmail.com'
+]
 __copyright__ = "Copyright (c) 2007 Red Hat, inc"
 __license__ = """This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -42,7 +46,7 @@ def create_minion_keys(CN, C=None, ST=None, L=None, O=None, OU=None, emailAddres
     log = logger()
     
     cert_dir = minion_config.cert_dir
-    master_uri = 'http://%s:%s/' % (minion_config.certmaster, minion_config.certmaster_port)
+    master_uri = 'http://%s:%s/' % (minion_config.certify, minion_config.certify_port)
 
     filename = CN
     if filename is None:
@@ -82,7 +86,8 @@ def create_minion_keys(CN, C=None, ST=None, L=None, O=None, OU=None, emailAddres
             csr = certs.make_csr(keypair, CN=CN, C=C, ST=ST, L=L, O=O, OU=OU, emailAddress=emailAddress, hashalgorithm=hashalgorithm)
             certs.dump_to_file(csr, csr_file, mode=0644)
             
-    except:
+    except object as e:
+        log.exception(e)
         log.exception("Could not create local keypair or csr for session.")
         raise exc.CMException("Could not create local keypair or csr for session")
 
@@ -90,23 +95,23 @@ def create_minion_keys(CN, C=None, ST=None, L=None, O=None, OU=None, emailAddres
 
     while not result:
         try:
-            log.debug("submitting CSR: %s  to certmaster %s" % (csr_file, master_uri))
+            log.debug("submitting CSR: %s  to certify %s" % (csr_file, master_uri))
             (result, cert_string, ca_cert_string) = submit_csr_to_master(csr_file, master_uri)
         except socket.error:
             log.warning("Could not connect to server at %s" % master_uri, exc_info=True)
             
         if not result:
-            log.warning("no response from certmaster %s, sleeping 10 seconds" % master_uri)
+            log.warning("no response from certify %s, sleeping 10 seconds" % master_uri)
             time.sleep(10)
 
     if result:
-        log.debug("received certificate from certmaster %s, storing to %s" % (master_uri, cert_file))
+        log.debug("received certificate from certify %s, storing to %s" % (master_uri, cert_file))
         if not keypair:
             keypair = certs.retrieve_key_from_file(key_file)
         valid = certs.check_cert_key_match(cert_string, keypair)
         if not valid:
-            log.info("certificate does not match key (run certmaster-ca --clean first?)")
-            sys.stderr.write("certificate does not match key (run certmaster-ca --clean first?)\n")
+            log.info("certificate does not match key (run certify-ca --clean first?)")
+            sys.stderr.write("certificate does not match key (run certify-ca --clean first?)\n")
             return
         
         cert_fd = os.open(cert_file, os.O_RDWR|os.O_CREAT, 0644)
@@ -119,7 +124,7 @@ def create_minion_keys(CN, C=None, ST=None, L=None, O=None, OU=None, emailAddres
 
 def submit_csr_to_master(csr_file, master_uri):
     """"
-    gets us our cert back from the certmaster.wait_for_cert() method
+    gets us our cert back from the certify.wait_for_cert() method
     takes csr_file as path location and master_uri
     
     :returns Bool, str(cert), str(ca_cert)

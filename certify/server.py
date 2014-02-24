@@ -31,7 +31,7 @@ import exceptions
 
 from OpenSSL import crypto
 
-from certify import certs, utils, exc
+from certify import certs, utils, exc, config
 
 # XXX: Make configurable ...
 CERTMASTER_LISTEN_PORT = 51235
@@ -48,24 +48,34 @@ class CertMaster(object):
         usename = utils.get_hostname()
 
         mycn = '%s-CA-KEY' % usename
-        # TODO: Make extensions confi
-        self.ca_key_file = '%s/certmaster.key' % self.cfg.cadir
-        self.ca_cert_file = '%s/certmaster.crt' % self.cfg.cadir
+        # TODO: Make extensions configurable
+        self.ca_key_file = '%s/ca.key' % self.cfg.cadir
+        self.ca_cert_file = '%s/ca.crt' % self.cfg.cadir
 
         self.logger = logging.getLogger(__name__)
         self.audit_logger = logging.getLogger('audit')
 
         # if ca_key_file exists and ca_cert_file is missing == minion only setup
         if os.path.exists(self.ca_key_file) and not os.path.exists(self.ca_cert_file):
-            raise Exception("Unable to initialize certmaster service; CA key/cert files do not exist.")
+            raise Exception("Unable to initialize certify service; CA key/cert files do not exist.")
 
         try:
             if not os.path.exists(self.cfg.cadir):
                 os.makedirs(self.cfg.cadir)
             if not os.path.exists(self.ca_key_file) and not os.path.exists(self.ca_cert_file):
-                certs.create_ca(CN=mycn, ca_key_file=self.ca_key_file, ca_cert_file=self.ca_cert_file)
+                # TODO: configure all other optional args
+                (cacert, cakey) = certs.create_ca(CN=mycn)
+
+                with open(self.ca_key_file, 'wt') as f:
+                    certs.dump_to_file(cakey, self.ca_key_file)
+                    self.logger.info("Created CA Key %s", self.ca_key_file)
+
+                with open(self.ca_cert_file, 'wt') as f:
+                    certs.dump_to_file(cacert, self.ca_cert_file)
+                    self.logger.info("Created CA Cert %s", self.ca_cert_file)
+
         except (IOError, OSError), e:
-            raise Exception('Cannot make certmaster certificate authority keys/certs, aborting: %s' % e)
+            raise Exception('Cannot make certify certificate authority keys/certs, aborting: %s' % e)
 
         # open up the cakey and cacert so we have them available
         self.cakey = certs.retrieve_key_from_file(self.ca_key_file)
@@ -77,8 +87,8 @@ class CertMaster(object):
 
         # setup handlers
         self.handlers = {
-                 'wait_for_cert': self.wait_for_cert,
-                 }
+            'wait_for_cert': self.wait_for_cert,
+        }
 
 
     def _dispatch(self, method, params):
@@ -113,7 +123,7 @@ class CertMaster(object):
         requesting_host = self._sanitize_cn(csrreq.get_subject().CN)
 
         if with_triggers:
-            self._run_triggers(requesting_host, '/var/lib/certmaster/triggers/request/pre/*')
+            self._run_triggers(requesting_host, '/var/lib/certify/triggers/request/pre/*')
 
         self.logger.info("%s requested signing of cert %s" % (requesting_host,csrreq.get_subject().CN))
         # get rid of dodgy characters in the filename we're about to make
@@ -147,7 +157,7 @@ class CertMaster(object):
             cert_buf = crypto.dump_certificate(crypto.FILETYPE_PEM, slavecert)
             cacert_buf = crypto.dump_certificate(crypto.FILETYPE_PEM, self.cacert)
             if with_triggers:
-                self._run_triggers(requesting_host,'/var/lib/certmaster/triggers/request/post/*')
+                self._run_triggers(requesting_host,'/var/lib/certify/triggers/request/post/*')
             return True, cert_buf, cacert_buf
 
         # if we don't have a cert then:
@@ -161,7 +171,7 @@ class CertMaster(object):
             cacert_buf = crypto.dump_certificate(crypto.FILETYPE_PEM, self.cacert)
             self.logger.info("cert for %s was autosigned" % (requesting_host))
             if with_triggers:
-                self._run_triggers(None,'/var/lib/certmaster/triggers/request/post/*')
+                self._run_triggers(None,'/var/lib/certify/triggers/request/post/*')
             return True, cert_buf, cacert_buf
 
         else:
@@ -172,7 +182,7 @@ class CertMaster(object):
             del destfo
             self.logger.info("cert for %s created and ready to be signed" % (requesting_host))
             if with_triggers:
-                self._run_triggers(None,'/var/lib/certmaster/triggers/request/post/*')
+                self._run_triggers(None,'/var/lib/certify/triggers/request/post/*')
             return False, '', ''
 
         return False, '', ''
@@ -199,13 +209,13 @@ class CertMaster(object):
             print 'No match for %s to clean up' % hn
             return
         if with_triggers:
-            self._run_triggers(hn,'/var/lib/certmaster/triggers/remove/pre/*')
+            self._run_triggers(hn,'/var/lib/certify/triggers/remove/pre/*')
         for fn in csrs + certs:
             print 'Cleaning out %s for host matching %s' % (fn, hn)
             self.logger.info('Cleaning out %s for host matching %s' % (fn, hn))
             os.unlink(fn)
         if with_triggers:
-            self._run_triggers(hn,'/var/lib/certmaster/triggers/remove/post/*')
+            self._run_triggers(hn,'/var/lib/certify/triggers/remove/post/*')
 
     def sign_this_csr(self, csr, with_triggers=True):
         """returns the path to the signed cert file"""
@@ -238,7 +248,7 @@ class CertMaster(object):
 
         requesting_host = self._sanitize_cn(csrreq.get_subject().CN)
         if with_triggers:
-            self._run_triggers(requesting_host,'/var/lib/certmaster/triggers/sign/pre/*')
+            self._run_triggers(requesting_host,'/var/lib/certify/triggers/sign/pre/*')
 
 
         certfile = '%s/%s.cert' % (self.cfg.certroot, requesting_host)
@@ -253,7 +263,7 @@ class CertMaster(object):
 
         self.logger.info("csr %s signed" % (certfile))
         if with_triggers:
-            self._run_triggers(requesting_host,'/var/lib/certmaster/triggers/sign/post/*')
+            self._run_triggers(requesting_host,'/var/lib/certify/triggers/sign/post/*')
 
 
         if csr_unlink_file and os.path.exists(csr_unlink_file):
@@ -365,11 +375,11 @@ def serve(log_requests=True):
     """
     Code for starting the XMLRPC service.
     """
-    global certmaster_config
-    service = CertMaster(config=certmaster_config)
+    certify_config = config.certify_config
+    service = CertMaster(config=certify_config)
 
-    listen_addr = certmaster_config.listen_addr
-    listen_port = certmaster_config.listen_port
+    listen_addr = certify_config.listen_addr
+    listen_port = certify_config.listen_port
     
     if listen_port == '' or listen_port is None:
         listen_port = CERTMASTER_LISTEN_PORT
@@ -379,7 +389,7 @@ def serve(log_requests=True):
         server.logRequests = 0 # don't print stuff to console
         
     server.register_instance(service)
-    service.logger.info("certmaster started")
-    service.audit_logger.logger.info("certmaster started")
+    service.logger.info("certify started")
+    service.audit_logger.info("certify started")
     server.serve_forever()
 

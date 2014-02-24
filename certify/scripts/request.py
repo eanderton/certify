@@ -1,6 +1,6 @@
 """
-Application to request a cert from a certmaster.
-Takes no arguments, uses /etc/certmaster/minion.conf
+Application to request a cert from a certify CertMaster.
+Takes no arguments, uses /etc/certify/minion.conf
 
 Copyright 2008, Red Hat, Inc
 Michael DeHaan <mdehaan@redhat.com>
@@ -13,10 +13,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 """
 import optparse
-
+import logging
 from certify import requester
 
-if __name__ == "__main__":
+def main():
     parser = optparse.OptionParser()
 
     parser.add_option('--hostname', action="store", dest="hostname",
@@ -24,5 +24,8 @@ if __name__ == "__main__":
         help='hostname to use as the CN for the certificate')
     
     (opts, args) = parser.parse_args()
+    
+    logging.basicConfig()    
+    logger = logging.getLogger(__name__)
 
     requester.request_cert(hostname=opts.hostname)

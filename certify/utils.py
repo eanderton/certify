@@ -33,6 +33,10 @@ if (hasattr(os, "devnull")):
 else:
     REDIRECT_TO = "/dev/null"
 
+def get_version_str():
+    import OpenSSL
+    import certify
+    return "Certify v%s - pyOpenSSL v%s" % (certify.__version__, OpenSSL.__version__)
 
 def trace_me():
     x = traceback.extract_stack()
@@ -69,10 +73,10 @@ def daemonize(pidfile=None):
             open(pidfile, "w").write(str(pid))
         sys.exit(0)
 
-def get_hostname(talk_to_certmaster=True):
+def get_hostname(talk_to_certify=True):
     """"
     localhost" is a lame hostname to use for a key, so try to get
-    a more meaningful hostname. We do this by connecting to the certmaster
+    a more meaningful hostname. We do this by connecting to the certify
     and seeing what interface/ip it uses to make that connection, and looking
     up the hostname for that.
     """
@@ -88,10 +92,10 @@ def get_hostname(talk_to_certmaster=True):
 def run_triggers(ref, globber):
     """
     Runs all the trigger scripts in a given directory.
-    ref can be a certmaster object, if not None, the name will be passed
+    ref can be a certify object, if not None, the name will be passed
     to the script.  If ref is None, the script will be called with
     no argumenets.  Globber is a wildcard expression indicating which
-    triggers to run.  Example:  "/var/lib/certmaster/triggers/blah/*"
+    triggers to run.  Example:  "/var/lib/certify/triggers/blah/*"
     """
 
     log = logging.getLogger('%s.triggers' % __name__)
@@ -113,7 +117,7 @@ def run_triggers(ref, globber):
             continue
 
         if rc != 0:
-            raise exc.TriggerFailed("certmaster trigger failed: %(file)s returns %(code)d" % { "file" : file, "code" : rc })
+            raise exc.TriggerFailed("certify trigger failed: %(file)s returns %(code)d" % { "file" : file, "code" : rc })
 
 
 class CertmasterOptionParser(optparse.OptionParser):

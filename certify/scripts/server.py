@@ -2,14 +2,16 @@ import sys
 import optparse
 import logging
 
-from certify import __version__, config, server, utils
+from certify import config, server, utils
 
-if __name__ == "__main__":
+def main():    
+    usage = 'certify-server <options>'
+    parser = optparse.OptionParser(
+        usage=usage,
+        version='%prog - ' + utils.get_version_str())
     
-    usage = 'certmaster [OPTIONS]'
-    parser = optparse.OptionParser(usage=usage, version='%prog ' +  __version__)
-    
-    parser.add_option('-c', '--config=', dest="config", default="/etc/certmaster/certmaster.conf", action="store",
+ #   parser.add_option('-c', '--config=', dest="config", default="/etc/certify/certify.conf", action="store",
+    parser.add_option('-c', '--config=', dest="config", action="store",
           help='The configuration file to use.')
     
     parser.add_option('-d', '--daemon', default=False, action="store_true",
@@ -35,23 +37,24 @@ if __name__ == "__main__":
     else:
         console_level = None
         
-    
-    config.init_logging(opts.config, console_level=console_level)
-    config.init_certmaster_config(opts.config)
-    
-    log = logging.getLogger(__name__)
-    
-    server = server.CertMaster()
+    if opts.config: 
+        config.init_logging(opts.config, console_level=console_level)
+        config.init_certify_config(opts.config)
+
+    # TODO: double-check logging bootstrap
+    logging.basicConfig()    
+    logger = logging.getLogger(__name__)
     
     if opts.daemon:
-        utils.daemonize(config.certmaster_config.pid_file)
+        utils.daemonize(config.certify_config.pid_file)
     
     try:
-        server.serve(server, log_requests=opts.log_requests)
+        server.serve(log_requests=opts.log_requests)
     except KeyboardInterrupt:
-        log.debug("shutting down due to user input")
+        logger.debug("shutting down due to user input")
         sys.exit(0)
     except:
-        log.exception("unexpected error")
+        print "halskdjflsafdjk"    
+        logger.exception("unexpected error")
         sys.exit(1)
     

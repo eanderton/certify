@@ -10,23 +10,17 @@ import glob
 import optparse
 import os
 
-import certmaster
-import certmaster.certs
-import certmaster.certmaster
-
-
+from certify import config, server, utils
 
 def errorprint(stuff):
     print >> sys.stderr, stuff
 
-class CertmasterCAOptionParser(optparse.OptionParser):
-    def get_version(self):
-        return file("/etc/certmaster/version").read().strip()
-
-def parseargs(args):
-    usage = 'certmaster-ca <option> [args]'
-    parser = CertmasterCAOptionParser(usage=usage,version=True)
-    
+def main():
+    usage = 'certify-ca <option> [args]'
+    parser = optparse.OptionParser(
+        usage=usage,
+        version='%prog - ' + utils.get_version_str())
+   
     parser.add_option('-l', '--list', default=False, action="store_true",
           help='list signing requests remaining')
     parser.add_option('-s', '--sign', default=False, action="store_true",
@@ -40,24 +34,18 @@ def parseargs(args):
           
     (opts, args) = parser.parse_args()
     
-    
     # gotta be a better way...
     if not opts.list and not opts.sign and not opts.clean \
             and not opts.list_signed and not opts.list_cert_hash:
         parser.print_help()
         sys.exit(1)
             
-    return (opts, args)
-
-def main(args):
     if os.geteuid() != 0:
-        errorprint('Must be root to run certmaster-ca')
+        errorprint('Must be root to run certify-ca')
         return 1
-        
-    cm = certmaster.certmaster.CertMaster()
-    
-    (opts, args) = parseargs(args)
 
+    configuration = config.CMConfig()
+    cm = server.CertMaster(configuration)
         
     if opts.list:
         hns = cm.get_csrs_waiting()
@@ -119,6 +107,3 @@ def main(args):
             print i
             
         return 0
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))

@@ -9,11 +9,11 @@ import ConfigParser
 from certify import exc
 from certify.config.model import MinionConfig, CMConfig
 
-DEFAULT_CERTMASTER_CONFIG_FILE = '/etc/certmaster/certmaster.cfg'
-DEFAULT_MINION_CONFIG_FILE = '/etc/certmaster/minion.cfg'
+DEFAULT_CERTMASTER_CONFIG_FILE = '/etc/certify/certify.cfg'
+DEFAULT_MINION_CONFIG_FILE = '/etc/certify/minion.cfg'
 
 minion_config = MinionConfig()
-certmaster_config = CMConfig()
+certify_config = CMConfig()
 
 def _init_config(configfile, config_obj, section='main'):
     confparser = ConfigParser.ConfigParser()
@@ -25,9 +25,9 @@ def _init_config(configfile, config_obj, section='main'):
     else:
         raise exc.ConfigError("Unable to read config file: %s" % (configfile,))
     
-def init_certmaster_config(configfile):
-    global certmaster_config
-    _init_config(configfile, certmaster_config)
+def init_certify_config(configfile):
+    global certify_config
+    _init_config(configfile, certify_config)
     
 def init_minion_config(configfile):
     global minion_config
@@ -36,7 +36,7 @@ def init_minion_config(configfile):
 def init_logging(configfile, console_level=None):
     """
     Initializes the logging subsystem, giving preference to the configparser-format log file
-    configuration, and falling back to classic certmaster logfile/loglevel specification.
+    configuration, and falling back to classic certify logfile/loglevel specification.
     
     The `console_level` parameter will add an additional stdout console handler at specified level.
     """
